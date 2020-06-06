@@ -27,8 +27,7 @@ def populate():
 	conn.commit()
 	cursor.execute(create_table)
 	conn.commit()
+	conn.close()
 
-	# conn.close()
-
-
-populate()
+if __name__ == "__main__":
+	populate()
