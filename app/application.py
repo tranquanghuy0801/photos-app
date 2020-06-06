@@ -22,7 +22,6 @@ login_manager = flask_login.LoginManager()
 login_manager.init_app(application)
 
 ### load and cache cognito JSON Web Key (JWK)
-# https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-using-tokens-with-identity-providers.html
 JWKS_URL = ("https://cognito-idp.%s.amazonaws.com/%s/.well-known/jwks.json"
             % (AWS_REGION, COGNITO_POOL_ID))
 JWKS = requests.get(JWKS_URL).json()["keys"]
@@ -140,7 +139,6 @@ def info():
 @application.route("/login")
 def login():
     """Login route"""
-    # http://docs.aws.amazon.com/cognito/latest/developerguide/login-endpoint.html
     session['csrf_state'] = random_hex_bytes(8)
     cognito_login = ("https://%s/"
                      "login?response_type=code&client_id=%s"
@@ -153,7 +151,6 @@ def login():
 @application.route("/logout")
 def logout():
     """Logout route"""
-    # http://docs.aws.amazon.com/cognito/latest/developerguide/logout-endpoint.html
     flask_login.logout_user()
     cognito_logout = ("https://%s/"
                       "logout?response_type=code&client_id=%s"
@@ -164,7 +161,6 @@ def logout():
 @application.route("/callback")
 def callback():
     """Exchange the 'code' for Cognito tokens"""
-    #http://docs.aws.amazon.com/cognito/latest/developerguide/token-endpoint.html
     csrf_state = request.args.get('state')
     code = request.args.get('code')
     request_parameters = {'grant_type': 'authorization_code',
@@ -177,7 +173,6 @@ def callback():
                                                 COGNITO_CLIENT_SECRET))
 
     # the response:
-    # http://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-using-tokens-with-identity-providers.html
     if response.status_code == requests.codes.ok and csrf_state == session['csrf_state']:
         verify(response.json()["access_token"])
         id_token = verify(response.json()["id_token"], response.json()["access_token"])
