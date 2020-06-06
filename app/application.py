@@ -11,12 +11,12 @@ from wtforms import TextAreaField
 import flask_login
 from jose import jwt
 
-import config
-import util
-import database
+from app.config import *
+from app.util import *
+from app.database import *
 
 application = Flask(__name__)
-application.secret_key = config.FLASK_SECRET
+application.secret_key = FLASK_SECRET
 
 login_manager = flask_login.LoginManager()
 login_manager.init_app(application)
@@ -24,7 +24,7 @@ login_manager.init_app(application)
 ### load and cache cognito JSON Web Key (JWK)
 # https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-using-tokens-with-identity-providers.html
 JWKS_URL = ("https://cognito-idp.%s.amazonaws.com/%s/.well-known/jwks.json"
-            % (config.AWS_REGION, config.COGNITO_POOL_ID))
+            % (AWS_REGION, COGNITO_POOL_ID))
 JWKS = requests.get(JWKS_URL).json()["keys"]
 
 ### FlaskForm set up
@@ -69,24 +69,24 @@ def myphotos():
     # get list of images from database
 
     s3_client = boto3.client('s3')
-    photos = database.list_photos(flask_login.current_user.id)
+    photos = list_photos(flask_login.current_user.id)
     for photo in photos:
         photo["signed_url"] = s3_client.generate_presigned_url(
             'get_object',
-            Params={'Bucket': config.PHOTOS_BUCKET, 'Key': photo["object_key"]}
+            Params={'Bucket': PHOTOS_BUCKET, 'Key': photo["object_key"]}
         )
 
     form = PhotoForm()
     url = None
     if form.validate_on_submit():
-        image_bytes = util.resize_image(form.photo.data, (300, 300))
+        image_bytes = resize_image(form.photo.data, (300, 300))
         if image_bytes:
 
             # save the file to a bucket
             prefix = "photos/"
-            key = prefix + util.random_hex_bytes(8) + '.png'
+            key = prefix + random_hex_bytes(8) + '.png'
             s3_client.put_object(
-                Bucket=config.PHOTOS_BUCKET,
+                Bucket=PHOTOS_BUCKET,
                 Key=key,
                 Body=image_bytes,
                 ContentType='image/png'
@@ -94,14 +94,14 @@ def myphotos():
 
             url = s3_client.generate_presigned_url(
                 'get_object',
-                Params={'Bucket': config.PHOTOS_BUCKET, 'Key': key})
+                Params={'Bucket': PHOTOS_BUCKET, 'Key': key})
 
             # use rekcognition exercise to detect image labels
             rek = boto3.client('rekognition')
             response = rek.detect_labels(
                 Image={
                     'S3Object': {
-                        'Bucket': config.PHOTOS_BUCKET,
+                        'Bucket': PHOTOS_BUCKET,
                         'Name': key
                     }
                 })
@@ -110,7 +110,7 @@ def myphotos():
             # added user id and description to the database
             
             labels_comma_separated = ", ".join(all_labels)
-            database.add_photo(key, labels_comma_separated,
+            add_photo(key, labels_comma_separated,
                                form.description.data, flask_login.current_user.id)
             form.description.data = ''
 
@@ -120,7 +120,7 @@ def myphotos():
 @flask_login.login_required
 def myphotos_delete(object_key):
     "delete photo route"
-    database.delete_photo(object_key, flask_login.current_user.id)
+    delete_photo(object_key, flask_login.current_user.id)
     return redirect(url_for("myphotos"))
 
 @application.route("/info")
@@ -141,13 +141,13 @@ def info():
 def login():
     """Login route"""
     # http://docs.aws.amazon.com/cognito/latest/developerguide/login-endpoint.html
-    session['csrf_state'] = util.random_hex_bytes(8)
+    session['csrf_state'] = random_hex_bytes(8)
     cognito_login = ("https://%s/"
                      "login?response_type=code&client_id=%s"
                      "&state=%s"
                      "&redirect_uri=%s/callback" %
-                     (config.COGNITO_DOMAIN, config.COGNITO_CLIENT_ID, session['csrf_state'],
-                      config.BASE_URL))
+                     (COGNITO_DOMAIN, COGNITO_CLIENT_ID, session['csrf_state'],
+                      BASE_URL))
     return redirect(cognito_login)
 
 @application.route("/logout")
@@ -158,7 +158,7 @@ def logout():
     cognito_logout = ("https://%s/"
                       "logout?response_type=code&client_id=%s"
                       "&logout_uri=%s/" %
-                      (config.COGNITO_DOMAIN, config.COGNITO_CLIENT_ID, config.BASE_URL))
+                      (COGNITO_DOMAIN, COGNITO_CLIENT_ID, BASE_URL))
     return redirect(cognito_logout)
 
 @application.route("/callback")
@@ -168,13 +168,13 @@ def callback():
     csrf_state = request.args.get('state')
     code = request.args.get('code')
     request_parameters = {'grant_type': 'authorization_code',
-                          'client_id': config.COGNITO_CLIENT_ID,
+                          'client_id': COGNITO_CLIENT_ID,
                           'code': code,
-                          "redirect_uri" : config.BASE_URL + "/callback"}
-    response = requests.post("https://%s/oauth2/token" % config.COGNITO_DOMAIN,
+                          "redirect_uri" : BASE_URL + "/callback"}
+    response = requests.post("https://%s/oauth2/token" % COGNITO_DOMAIN,
                              data=request_parameters,
-                             auth=HTTPBasicAuth(config.COGNITO_CLIENT_ID,
-                                                config.COGNITO_CLIENT_SECRET))
+                             auth=HTTPBasicAuth(COGNITO_CLIENT_ID,
+                                                COGNITO_CLIENT_SECRET))
 
     # the response:
     # http://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-using-tokens-with-identity-providers.html
@@ -211,10 +211,8 @@ def verify(token, access_token=None):
     # and verify the key
     header = jwt.get_unverified_header(token)
     key = [k for k in JWKS if k["kid"] == header['kid']][0]
-    id_token = jwt.decode(token, key, audience=config.COGNITO_CLIENT_ID, access_token=access_token)
+    id_token = jwt.decode(token, key, audience=COGNITO_CLIENT_ID, access_token=access_token)
     return id_token
 
 if __name__ == "__main__":
-    use_c9_debugger = False
-    application.run(use_debugger=not use_c9_debugger, debug=True,
-                    use_reloader=not use_c9_debugger, host='0.0.0.0', port=8080)
+    application.run(debug=True,host='0.0.0.0', port=8080)

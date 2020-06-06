@@ -1,4 +1,4 @@
-.PHONY = help run-web
+.PHONY = help run-web run-env
 
 PYTHON=$(which python3 | grep "python3")
 
@@ -6,9 +6,11 @@ PYTHON=$(which python3 | grep "python3")
 
 help:
 	@echo "make help - (all guide instructions for Makefile)"
+	@echo "make run-env - (run virtual environments)"
+	@echo "make run-web - (run web using unicorn)"
 
 run-env:
 	pipenv shell
 
 run-web:
-	PYTHON app/application.py
+	gunicorn wsgi:application --timeout 300

@@ -4,17 +4,18 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
+python-dotenv = "*"
 
 [packages]
-requests = "<2.19"
-flask-wtf = "<0.15"
-aws-xray-sdk = "<0.96"
-flask-login = "<0.5"
-python-jose = "<2.1"
-mysql-connector-python = "<8.1"
+requests = "*"
+flask-wtf = "*"
+flask-login = "*"
+python-jose = "*"
+mysql-connector-python = "*"
 boto3 = "*"
-Flask = "<0.13"
-Pillow = "<5.1"
+Flask = "*"
+Pillow = "*"
+gunicorn = "*"
 
 [requires]
 python_version = "3.6"

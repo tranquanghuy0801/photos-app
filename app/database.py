@@ -1,6 +1,6 @@
 "Database layer"
 import mysql.connector
-import config
+from app.config import *
 
 def list_photos(cognito_username):
     "Select all the photos from the database"
@@ -36,8 +36,8 @@ def delete_photo(object_key, cognito_username):
 
 def get_database_connection():
     "Build a database connection"
-    conn = mysql.connector.connect(user=config.DATABASE_USER, password=config.DATABASE_PASSWORD,
-                                   host=config.DATABASE_HOST,
-                                   database=config.DATABASE_DB_NAME,
+    conn = mysql.connector.connect(user=DATABASE_USER, password=DATABASE_PASSWORD,
+                                   host=DATABASE_HOST,
+                                   database=DATABASE_DB_NAME,
                                    use_pure=True) # see https://bugs.mysql.com/90585
     return conn

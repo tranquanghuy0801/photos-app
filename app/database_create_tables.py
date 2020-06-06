@@ -1,6 +1,6 @@
 """ Script to create DDL"""
 import mysql.connector
-from config import *
+from app.config import *
 
 def populate():
 	""" create DDL for tables and users """
